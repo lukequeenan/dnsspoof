@@ -20,3 +20,4 @@ doc/
 # Custom
 .DS_Store
 *.txt
+*.sh
