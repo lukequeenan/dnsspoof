@@ -15,6 +15,7 @@ require 'packetfu'
 =end
 class ArpSpoof
     
+    # Create the packets and store global data, called when ArpSpoof is created
     def initialize (routerIP, routerMAC, victimIP, victimMAC, interface, ourInfo)
         
         # Store global info
@@ -41,6 +42,7 @@ class ArpSpoof
         @arp_packet_router.arp_opcode = 2                        # arp code 2 == ARP reply
     end
     
+    # Send out the ARP packets in a forever loop
     def main
 
         # Run until we get killed by the parent, sending out packets

