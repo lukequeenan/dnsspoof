@@ -21,6 +21,9 @@ class ArpSpoof
         # Store global info
         @interface = interface
         
+        # Testing data
+        puts "Victim MAC: " + victimMAC + "\n"
+        
         # Make the victim packet
         @arp_packet_victim = PacketFu::ARPPacket.new()
         @arp_packet_victim.eth_saddr = ourInfo[:eth_saddr]       # our MAC address
