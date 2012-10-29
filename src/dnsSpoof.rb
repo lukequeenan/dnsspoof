@@ -84,9 +84,7 @@ private
         
         # Find the DNS packets
         capture.stream.each do |pkt|
-            puts "got packet\n"
             if UDPPacket.can_parse?(pkt)
-                puts "Can parse\n"
                 packet = Packet.parse(pkt)
                 
                 # Check for the platform before using to_s
@@ -147,7 +145,6 @@ private
         
         # Send the packet out
         response.to_w(@interface)
-        puts "\nsent packet out\n"
         
     end
     
@@ -203,7 +200,7 @@ private
 end
 
 def test
-    spoof = DnsSpoof.new("192.168.1.1", "192.168.1.115", "en0")
+    spoof = DnsSpoof.new("192.168.0.100", "192.168.0.1", "en0")
     spoof.main
 end
 
