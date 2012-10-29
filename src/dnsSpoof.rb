@@ -88,8 +88,14 @@ private
             if UDPPacket.can_parse?(pkt)
                 puts "Can parse\n"
                 packet = Packet.parse(pkt)
-                dnsQuery = packet.payload[2].to_s(base=16) + \
-                           packet.payload[3].to_s(base=16)
+                
+                # Check for the platform before using to_s
+                if RUBY_PLATFORM =~ /darwin/
+                    dnsQuery = packet.payload[2].to_s(base=16) + \
+                               packet.payload[3].to_s(base=16)
+                else
+                    dnsQuery = packet.payload[2].to_s + packet.payload[3].to_s
+                end
                 # Make sure we have a query packet
                 if dnsQuery == '10'
                     domainName = getDomainName(packet.payload[12..-1])
