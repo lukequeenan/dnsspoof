@@ -50,7 +50,7 @@ class ArpSpoof
 
         # Run until we get killed by the parent, sending out packets
         while true
-            sleep 1
+            sleep 2
             @arp_packet_victim.to_w(@interface)
             @arp_packet_router.to_w(@interface)
         end
