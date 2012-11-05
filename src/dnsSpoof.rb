@@ -81,17 +81,18 @@ private
                                         :promisc => true,
                                         :filter => filter,
                                         :save => true)
-        
+
         # Find the DNS packets
         capture.stream.each do |pkt|
+            # Make sure we can parse the packet; if we can, parse it
             if UDPPacket.can_parse?(pkt)
                 packet = Packet.parse(pkt)
                 
-                # Check for the platform before using to_s
-                dnsQuery = packet.payload[2].to_s + packet.payload[3].to_s
-                
                 # Make sure we have a query packet
+                dnsQuery = packet.payload[2].to_s + packet.payload[3].to_s
                 if dnsQuery == '10'
+                    
+                    # Get the domain name into a readable format
                     domainName = getDomainName(packet.payload[12..-1])
                     
                     if domainName == nil
@@ -200,7 +201,7 @@ private
 end
 
 def test
-    spoof = DnsSpoof.new("192.168.0.100", "192.168.0.1", "en0")
+    spoof = DnsSpoof.new("192.168.0.1", "192.168.0.180", "en1")
     spoof.main
 end
 

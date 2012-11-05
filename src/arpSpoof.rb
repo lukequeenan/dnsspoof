@@ -21,7 +21,7 @@ class ArpSpoof
         # Store global info
         @interface = interface
         
-        # Testing data
+        # Victim's MAC
         puts "Victim MAC: " + victimMAC + "\n"
         
         # Make the victim packet
